@@ -1,4 +1,4 @@
 Class_MySQLAPI
 ==============
 
-AHK MySQL Wrapper
+AHK MySQL wrapper class.
