@@ -1,10 +1,11 @@
-Ôªø; ======================================================================================================================
+; ======================================================================================================================
 ; Wrapper class for MySQL C API functions        -> http://dev.mysql.com/doc/refman/5.5/en/c-api-functions.html
 ; Based on "MySQL Library functions" by panofish -> http://www.autohotkey.com/board/topic/72629-mysql-library-functions
 ; Namespace:   MySQLAPI
 ; AHK version: 1.1.10+
 ; Author:      panofish/just me
-; Version:     1.0.00.00 / 2013-06-15 by just me
+; Version:     1.0.01.00/2015-08-20/just me        - libmysql.dll error handling
+;              1.0.00.00/2013-06-15/just me
 ;
 ; Example usage:
 ;    #Include <Class_MySQLAPI>                                       ; include Class_MySQLAPI.ahk from lib
@@ -37,7 +38,7 @@ Class MySQLAPI {
    ; MYSQL_FIELD bit-flags
    Static FIELD_FLAG := {NOT_NULL: 1, PRI_KEY: 2, UNIQUE_KEY: 4, MULTIPLE_KEY: 8, BLOB: 16, UNSIGNED: 32
                        , ZEROFILL: 64, BINARY: 128, ENUM: 256, AUTO_INCREMENT: 512, TIMESTAMP: 1024, SET: 2048
-                       , NO_DEFAULT_VALUE: 4096, NUM:  32768}
+                       , NO_DEFAULT_VALUE: 4096, NUM:	32768}
    ; MySQL_SUCCESS
    Static MySQL_SUCCESS := 0
    ; ===================================================================================================================
@@ -49,14 +50,23 @@ Class MySQLAPI {
       Static LibMySQL := A_ScriptDir . "\libmysql.dll"
       ; Do not instantiate unstances!
       If (This.Base.Base.__Class = "MySQLAPI") {
-         MsgBox, 16, MySQL Error!, You mut not instantiate instances of MySQLDB!
+         MsgBox, 16, MySQL Error!, You must not instantiate instances of MySQLDB!
          Return False
       }
       ; Load libmysql.dll
       If (LibPath)
          LibMySQL := LibPath
       If !(MySQLM := DllCall("Kernel32.dll\LoadLibrary", "Str", LibMySQL, "UPtr")) {
-         MsgBox, 16, MySQL Error!, Could not load %LibMySQL%!
+         If (A_LastError = 126) ; The specified module could not be found
+            MsgBox, 16, MySQL Error!, Could not find %LibMySQL%!
+         Else {
+            ErrCode := A_LastError
+            VarSetCapacity(ErrMsg, 131072, 0) ; Unicode
+            DllCall("FormatMessage", "UInt", 0x1200, "Ptr", 0, "UInt", ErrCode, "UInt", 0, "Str", ErrMsg, "UInt", 65536, "Ptr", 0)
+            MsgBox, 16, MySQL Error!, % "Could not load " . LibMySQL . "!`n"
+                                      . "Error code: " . ErrCode . "`n"
+                                      . ErrMsg
+         }
          Return False
       }
       This.Module := MySQLM
@@ -662,7 +672,7 @@ Class MySQLAPI {
    ; ===================================================================================================================
    ; ===================================================================================================================
    ; Returns a null-terminated string containing the SQLSTATE error code for the most recently executed SQL statement.
-   ; The error code consists of five characters. '00000' means ‚Äúno error.‚Äù
+   ; The error code consists of five characters. '00000' means ìno error.î
    ; Return values: A null-terminated character string containing the SQLSTATE error code.
    ; ===================================================================================================================
    SQLState() {
